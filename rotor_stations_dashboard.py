@@ -1,19 +1,22 @@
-from gi.repository import RB, GLib, Gdk
+from gi.repository import RB, Gdk, GLib
+
 
 class YMDashboardEntry(RB.RhythmDBEntryType):
     def __init__(self, client, station):
-        RB.RhythmDBEntryType.__init__(self, name='ym-dashboard-entry', save_to_disk=False)
+        RB.RhythmDBEntryType.__init__(
+            self, name="ym-dashboard-entry", save_to_disk=False
+        )
         self.client = client
         self.station = station[6:]
         self.last_track = None
 
     def do_get_playback_uri(self, entry):
-#        if self.last_track:
-#            self.client.rotor_station_feedback_track_finished(station=self.station, track_id=self.last_track, total_played_seconds=entry.get_ulong(RB.RhythmDBPropType.DURATION)*1000)
         self.last_track = entry.get_string(RB.RhythmDBPropType.LOCATION)[6:]
-        downinfo = self.client.tracks_download_info(track_id=self.last_track, get_direct_links=True)
-#        self.client.rotor_station_feedback_track_started(station=self.station, track_id=self.last_track)
+        downinfo = self.client.tracks_download_info(
+            track_id=self.last_track, get_direct_links=True
+        )
         return downinfo[1].direct_link
+
 
 class YMDashboardSource(RB.BrowserSource):
     def __init__(self):
@@ -31,7 +34,9 @@ class YMDashboardSource(RB.BrowserSource):
         Gdk.threads_add_idle(GLib.PRIORITY_DEFAULT_IDLE, self.rotor_station_tracks)
 
     def rotor_station_tracks(self):
-        tracks = self.client.rotor_station_tracks(station=self.station[6:], queue=self.last_track).sequence
+        tracks = self.client.rotor_station_tracks(
+            station=self.station[6:], queue=self.last_track
+        ).sequence
         self.iterator = 0
         self.listcount = len(tracks)
         Gdk.threads_add_idle(GLib.PRIORITY_DEFAULT_IDLE, self.add_entry, tracks)
@@ -40,24 +45,24 @@ class YMDashboardSource(RB.BrowserSource):
     def add_entry(self, tracks):
         track = tracks[self.iterator].track
         if track.available:
-            entry = self.db.entry_lookup_by_location(self.station[:6]+str(track.id)+':'+str(track.albums[0].id))
+            entry_str = f"{self.station[:6]}{track.id}:{track.albums[0].id}"
+            entry = self.db.entry_lookup_by_location(entry_str)
             if entry is None:
-                entry = RB.RhythmDBEntry.new(self.db, self.entry_type, self.station[:6]+str(track.id)+':'+str(track.albums[0].id))
+                entry = RB.RhythmDBEntry.new(self.db, self.entry_type, entry_str,)
                 if entry is not None:
                     self.db.entry_set(entry, RB.RhythmDBPropType.TITLE, track.title)
-                    self.db.entry_set(entry, RB.RhythmDBPropType.DURATION, track.duration_ms/1000)
-                    artists = ''
-                    for artist in track.artists:
-                        if len(artists) > 1:
-                            artists += ', '+artist.name
-                        else:
-                            artists = artist.name
+                    self.db.entry_set(
+                        entry, RB.RhythmDBPropType.DURATION, track.duration_ms / 1000
+                    )
+                    artists = ", ".join((artist.name for artist in track.artists))
                     self.db.entry_set(entry, RB.RhythmDBPropType.ARTIST, artists)
-                    self.db.entry_set(entry, RB.RhythmDBPropType.ALBUM, track.albums[0].title)
+                    self.db.entry_set(
+                        entry, RB.RhythmDBPropType.ALBUM, track.albums[0].title
+                    )
                     self.db.commit()
         self.iterator += 1
         if self.iterator >= self.listcount:
-            self.last_track = str(track.id)+':'+str(track.albums[0].id)
+            self.last_track = f"{track.id}:{track.albums[0].id}"
             return False
         else:
             return True

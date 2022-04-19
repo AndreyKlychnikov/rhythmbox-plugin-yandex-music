@@ -1,0 +1,4 @@
+yandex-music
+pycairo
+PyGObject
+PyGObject-stubs
