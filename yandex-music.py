@@ -45,7 +45,7 @@ class YandexMusic(GObject.Object, Peas.Activatable):
                 plugin=self,
                 icon=Gio.FileIcon.new(iconfile),
             )
-            self.source.setup(db, self.client)
+            self.source.setup(db, self.client, "likes")
             shell.register_entry_type_for_source(self.source, self.entry_type)
             shell.append_display_page(self.source, self.page_group)
             Gdk.threads_add_idle(GLib.PRIORITY_DEFAULT_IDLE, self.load_dashboard)
@@ -65,7 +65,7 @@ class YandexMusic(GObject.Object, Peas.Activatable):
         if self.client:
             dashboard = self.client.rotor_stations_dashboard()
             for i, result in enumerate(dashboard.stations):
-                station = f"feed{i}_{result.station.id.type}:{result.station.id.tag}"
+                station = f"{result.station.id.type}:{result.station.id.tag}"
                 entry_type = YMDashboardEntry(self.client, station)
                 source = GObject.new(
                     YMDashboardSource,
